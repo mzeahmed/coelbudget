@@ -11,9 +11,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Stores and retrieves budget transactions in a local JSON file.
+ *
+ * <p>Preserves transaction identifiers across application restarts
+ * and supports legacy transactions without identifiers.</p>
  */
 public class JsonBudgetRepository implements BudgetRepository {
 
@@ -26,11 +30,18 @@ public class JsonBudgetRepository implements BudgetRepository {
      * @param filePath the path to the JSON storage file
      */
     public JsonBudgetRepository(Path filePath) {
+        if (filePath == null) {
+            throw new IllegalArgumentException("File path cannot be null");
+        }
+
         this.filePath = filePath;
     }
 
     /**
      * Reads transactions from the JSON file.
+     *
+     * <p>Generates identifiers for legacy transactions that
+     * do not have an ID in the JSON file.</p>
      *
      * @return all stored transactions, or an empty list if the file is absent or empty
      * @throws IllegalStateException if the file cannot be read or contains invalid data
@@ -53,11 +64,16 @@ public class JsonBudgetRepository implements BudgetRepository {
             );
 
             if (data == null) {
-                throw new IllegalStateException("Invalid JSON transaction list");
+                throw new IllegalStateException(
+                        "Invalid JSON transaction list"
+                );
             }
 
             return data.stream()
                     .map(item -> new Transaction(
+                            item.id() != null
+                                    ? item.id()
+                                    : UUID.randomUUID(),
                             item.description(),
                             item.amount(),
                             TransactionType.valueOf(item.type()),
@@ -93,6 +109,7 @@ public class JsonBudgetRepository implements BudgetRepository {
 
             List<TransactionData> data = transactions.stream()
                     .map(transaction -> new TransactionData(
+                            transaction.getId(),
                             transaction.getDescription(),
                             transaction.getAmount(),
                             transaction.getType().name(),
@@ -101,7 +118,9 @@ public class JsonBudgetRepository implements BudgetRepository {
                     .toList();
 
             temporaryFile = Files.createTempFile(
-                    directory, "coelbudget-", ".tmp"
+                    directory,
+                    "coelbudget-",
+                    ".tmp"
             );
 
             mapper.writerWithDefaultPrettyPrinter()
@@ -114,6 +133,7 @@ public class JsonBudgetRepository implements BudgetRepository {
                         StandardCopyOption.REPLACE_EXISTING,
                         StandardCopyOption.ATOMIC_MOVE
                 );
+
             } catch (java.nio.file.AtomicMoveNotSupportedException e) {
                 Files.move(
                         temporaryFile,
@@ -126,6 +146,7 @@ public class JsonBudgetRepository implements BudgetRepository {
             throw new IllegalStateException(
                     "Unable to save budget transactions", e
             );
+
         } finally {
             if (temporaryFile != null) {
                 try {

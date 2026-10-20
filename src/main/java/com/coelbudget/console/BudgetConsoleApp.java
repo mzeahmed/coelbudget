@@ -1,43 +1,41 @@
 package com.coelbudget.console;
 
-import com.coelbudget.Budget;
 import com.coelbudget.Category;
 import com.coelbudget.Transaction;
 import com.coelbudget.TransactionType;
-import com.coelbudget.repository.BudgetRepository;
 import com.coelbudget.repository.JsonBudgetRepository;
+import com.coelbudget.service.BudgetService;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Scanner;
 
 /**
  * Manages the interactive console interface for CoelBudget.
  *
- * <p>Handles user input and navigation between menu options.</p>
+ * <p>Handles user input and delegates business operations
+ * to {@link BudgetService}.</p>
  */
 public class BudgetConsoleApp {
 
     private final Scanner scanner = new Scanner(System.in);
-    private final Budget budget = new Budget();
-    private final BudgetRepository repository = new JsonBudgetRepository(Path.of("data", "budget.json"));
+
+    private final BudgetService budgetService;
+
+    /**
+     * Creates the console application and initializes its budget service.
+     */
+    public BudgetConsoleApp() {
+        this.budgetService = new BudgetService(
+                new JsonBudgetRepository(Path.of("data", "budget.json"))
+        );
+    }
 
     /**
      * Starts the interactive console application.
      */
     public void run() {
         boolean running = true;
-
-        try {
-            for (var transaction : repository.findAll()) {
-                budget.addTransaction(transaction);
-            }
-        } catch (IllegalStateException e) {
-            BudgetConsolePrinter.printError(e.getMessage());
-            return;
-        }
 
         while (running) {
             this.printMenu();
@@ -48,18 +46,28 @@ public class BudgetConsoleApp {
                 case "1":
                     this.addTransaction();
                     break;
+
                 case "2":
-                    BudgetConsolePrinter.print(this.budget);
+                    BudgetConsolePrinter.print(
+                            this.budgetService.getBudget()
+                    );
                     break;
+
                 case "3":
-                    BudgetConsolePrinter.printExpensesByCategory(this.budget);
+                    BudgetConsolePrinter.printExpensesByCategory(
+                            this.budgetService.getBudget()
+                    );
                     break;
+
                 case "0":
-                    System.out.println("Quitter");
+                    System.out.println("Au revoir !");
                     running = false;
                     break;
+
                 default:
-                    System.out.println("Choix invalide, veuillez réessayer.");
+                    BudgetConsolePrinter.printError(
+                            "Choix invalide, veuillez réessayer."
+                    );
                     break;
             }
         }
@@ -69,7 +77,7 @@ public class BudgetConsoleApp {
      * Displays the available actions in the console menu.
      */
     private void printMenu() {
-        System.out.println("========== COELBUDGET ==========:");
+        System.out.println("\n========== COELBUDGET ==========");
         System.out.println("1. Ajouter une transaction");
         System.out.println("2. Afficher le budget");
         System.out.println("3. Dépenses par catégorie");
@@ -89,13 +97,32 @@ public class BudgetConsoleApp {
     }
 
     /**
-     * Prompts the user for transaction details and adds
-     * a validated transaction to the current budget.
+     * Displays all available transaction categories
+     * with their corresponding menu numbers.
+     */
+    private void printCategoryMenu() {
+        System.out.println("\nCatégorie de transaction :");
+
+        Category[] categories = Category.values();
+
+        for (int i = 0; i < categories.length; i++) {
+            System.out.println(
+                    (i + 1) + ". " + categories[i].name()
+            );
+        }
+    }
+
+    /**
+     * Prompts the user for transaction details and delegates
+     * transaction creation and persistence to the budget service.
      */
     private void addTransaction() {
-        System.out.print("Description de la transaction : ");
+
+        // Step 1: Read the transaction description.
+        System.out.print("\nDescription de la transaction : ");
         String description = this.scanner.nextLine();
 
+        // Step 2: Read and validate the amount.
         System.out.print("Montant de la transaction : ");
         String amountInput = this.scanner.nextLine();
 
@@ -108,7 +135,9 @@ public class BudgetConsoleApp {
             return;
         }
 
+        // Step 3: Read the transaction type.
         this.printTypeMenu();
+
         String typeInput = this.scanner.nextLine();
 
         TransactionType type = switch (typeInput) {
@@ -118,11 +147,15 @@ public class BudgetConsoleApp {
         };
 
         if (type == null) {
-            BudgetConsolePrinter.printError("Type de transaction invalide.");
+            BudgetConsolePrinter.printError(
+                    "Type de transaction invalide."
+            );
             return;
         }
 
+        // Step 4: Read and validate the category.
         this.printCategoryMenu();
+
         System.out.print("Votre choix : ");
         String categoryInput = this.scanner.nextLine();
 
@@ -130,51 +163,42 @@ public class BudgetConsoleApp {
 
         try {
             int choice = Integer.parseInt(categoryInput.trim());
+
             Category[] categories = Category.values();
 
             if (choice < 1 || choice > categories.length) {
-                BudgetConsolePrinter.printError("Catégorie invalide.");
+                BudgetConsolePrinter.printError(
+                        "Catégorie invalide."
+                );
                 return;
             }
 
             category = categories[choice - 1];
 
         } catch (NumberFormatException e) {
-            BudgetConsolePrinter.printError("Catégorie invalide.");
+            BudgetConsolePrinter.printError(
+                    "Catégorie invalide."
+            );
             return;
         }
 
+        // Step 5: Create and persist the transaction.
         try {
-            Transaction transaction = new Transaction(description, amount, type, category);
+            Transaction transaction = new Transaction(
+                    description,
+                    amount,
+                    type,
+                    category
+            );
 
-            // Prepare the updated list without modifying the current budget.
-            List<Transaction> updatedTransactions = new ArrayList<>(this.budget.getTransactions());
+            this.budgetService.addTransaction(transaction);
 
-            updatedTransactions.add(transaction);
-
-            // Persist before updating the in-memory budget.
-            this.repository.saveAll(updatedTransactions);
-
-            this.budget.addTransaction(transaction);
-
-            System.out.println("\nTransaction ajoutée avec succès.\n");
+            System.out.println(
+                    "\nTransaction ajoutée avec succès !"
+            );
 
         } catch (IllegalArgumentException | IllegalStateException e) {
             BudgetConsolePrinter.printError(e.getMessage());
-        }
-    }
-
-    /**
-     * Displays all available transaction categories
-     * with their corresponding menu numbers.
-     */
-    private void printCategoryMenu() {
-        System.out.println("\nCatégorie de transaction :");
-
-        Category[] categories = Category.values();
-
-        for (int i = 0; i < categories.length; i++) {
-            System.out.println((i + 1) + ". " + categories[i].name());
         }
     }
 }
