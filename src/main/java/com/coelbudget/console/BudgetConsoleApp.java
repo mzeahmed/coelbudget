@@ -4,8 +4,13 @@ import com.coelbudget.Budget;
 import com.coelbudget.Category;
 import com.coelbudget.Transaction;
 import com.coelbudget.TransactionType;
+import com.coelbudget.repository.BudgetRepository;
+import com.coelbudget.repository.JsonBudgetRepository;
 
 import java.math.BigDecimal;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 /**
@@ -17,12 +22,22 @@ public class BudgetConsoleApp {
 
     private final Scanner scanner = new Scanner(System.in);
     private final Budget budget = new Budget();
+    private final BudgetRepository repository = new JsonBudgetRepository(Path.of("data", "budget.json"));
 
     /**
      * Starts the interactive console application.
      */
     public void run() {
         boolean running = true;
+
+        try {
+            for (var transaction : repository.findAll()) {
+                budget.addTransaction(transaction);
+            }
+        } catch (IllegalStateException e) {
+            BudgetConsolePrinter.printError(e.getMessage());
+            return;
+        }
 
         while (running) {
             this.printMenu();
@@ -130,18 +145,21 @@ public class BudgetConsoleApp {
         }
 
         try {
-            Transaction transaction = new Transaction(
-                    description,
-                    amount,
-                    type,
-                    category
-            );
+            Transaction transaction = new Transaction(description, amount, type, category);
+
+            // Prepare the updated list without modifying the current budget.
+            List<Transaction> updatedTransactions = new ArrayList<>(this.budget.getTransactions());
+
+            updatedTransactions.add(transaction);
+
+            // Persist before updating the in-memory budget.
+            this.repository.saveAll(updatedTransactions);
 
             this.budget.addTransaction(transaction);
 
             System.out.println("\nTransaction ajoutée avec succès.\n");
 
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             BudgetConsolePrinter.printError(e.getMessage());
         }
     }

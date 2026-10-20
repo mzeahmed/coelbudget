@@ -1,10 +1,3 @@
-# Configuration du projet Java
-SRC_DIR := src
-OUT_DIR := target/classes
-MAIN_CLASS := com.coelbudget.Main
-JAVAC := javac
-JAVA := java
-
 # Couleurs affichees dans le terminal
 RED := \033[0;31m
 GREEN := \033[0;32m
@@ -41,12 +34,12 @@ test:
 ## Compile le projet puis execute la classe principale.
 run: compile
 	@printf "$(YELLOW)Demarrage de l'application...$(NO_COLOR)\n"
-	@$(JAVA) -cp $(OUT_DIR) $(MAIN_CLASS)
+	@mvn exec:java
 
 ## Supprime les fichiers generes par la compilation.
 clean:
 	@printf "$(YELLOW)Nettoyage des fichiers compiles...$(NO_COLOR)\n"
-	@rm -rf $(OUT_DIR)
+	@mvn clean
 	@printf "$(GREEN)Nettoyage termine.$(NO_COLOR)\n"
 
 ## Reconstruit le projet depuis une sortie propre.
