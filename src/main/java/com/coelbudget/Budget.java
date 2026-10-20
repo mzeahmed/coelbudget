@@ -1,10 +1,7 @@
 package com.coelbudget;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Represents a collection of financial transactions.
@@ -107,5 +104,48 @@ public class Budget {
         }
 
         return expenses;
+    }
+
+    /**
+     * Replaces an existing transaction with an updated transaction.
+     *
+     * @param updatedTransaction the updated transaction
+     * @throws IllegalArgumentException if the transaction does not exist
+     */
+    public void updateTransaction(Transaction updatedTransaction) {
+        if (updatedTransaction == null) {
+            throw new IllegalArgumentException("Transaction cannot be null");
+        }
+
+        for (int i = 0; i < transactions.size(); i++) {
+            Transaction current = transactions.get(i);
+
+            if (current.getId().equals(updatedTransaction.getId())) {
+                transactions.set(i, updatedTransaction);
+                return;
+            }
+        }
+
+        throw new IllegalArgumentException("Transaction not found");
+    }
+
+    /**
+     * Removes a transaction by its unique identifier.
+     *
+     * @param id the transaction identifier
+     * @throws IllegalArgumentException if the transaction does not exist
+     */
+    public void deleteTransaction(UUID id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Transaction ID cannot be null");
+        }
+
+        boolean removed = transactions.removeIf(
+                transaction -> transaction.getId().equals(id)
+        );
+
+        if (!removed) {
+            throw new IllegalArgumentException("Transaction not found");
+        }
     }
 }

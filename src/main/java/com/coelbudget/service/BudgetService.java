@@ -55,7 +55,6 @@ public class BudgetService {
      * Finds a transaction by its unique identifier.
      *
      * @param id the transaction identifier
-     * @return the matching transaction
      * @throws IllegalArgumentException if no transaction matches
      */
     public Transaction findById(UUID id) {
@@ -82,5 +81,52 @@ public class BudgetService {
 
         repository.saveAll(updated);
         budget.addTransaction(transaction);
+    }
+
+    /**
+     * Updates an existing transaction and persists the changes.
+     *
+     * @param updatedTransaction the updated transaction
+     * @throws IllegalArgumentException if the transaction does not exist
+     */
+    public void updateTransaction(Transaction updatedTransaction) {
+        if (updatedTransaction == null) {
+            throw new IllegalArgumentException("Transaction cannot be null");
+        }
+
+        UUID id = updatedTransaction.getId();
+
+        this.findById(id);
+
+        List<Transaction> updated = new ArrayList<>(budget.getTransactions());
+
+        for (int i = 0; i < updated.size(); i++) {
+            if (updated.get(i).getId().equals(id)) {
+                updated.set(i, updatedTransaction);
+                break;
+            }
+        }
+
+        repository.saveAll(updated);
+
+        budget.updateTransaction(updatedTransaction);
+    }
+
+    /**
+     * Deletes an existing transaction and persists the changes.
+     *
+     * @param id the transaction identifier
+     * @throws IllegalArgumentException if the transaction does not exist
+     */
+    public void deleteTransaction(UUID id) {
+        this.findById(id);
+
+        List<Transaction> updated = new ArrayList<>(budget.getTransactions());
+
+        updated.removeIf(transaction -> transaction.getId().equals(id));
+
+        repository.saveAll(updated);
+
+        budget.deleteTransaction(id);
     }
 }

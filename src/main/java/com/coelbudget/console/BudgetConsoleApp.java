@@ -9,6 +9,7 @@ import com.coelbudget.service.BudgetService;
 import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.util.Scanner;
+import java.util.UUID;
 
 /**
  * Manages the interactive console interface for CoelBudget.
@@ -59,6 +60,14 @@ public class BudgetConsoleApp {
                     );
                     break;
 
+                case "4":
+                    this.updateTransaction();
+                    break;
+
+                case "5":
+                    this.deleteTransaction();
+                    break;
+
                 case "0":
                     System.out.println("Au revoir !");
                     running = false;
@@ -81,6 +90,8 @@ public class BudgetConsoleApp {
         System.out.println("1. Ajouter une transaction");
         System.out.println("2. Afficher le budget");
         System.out.println("3. Dépenses par catégorie");
+        System.out.println("4. Modifier une transaction");
+        System.out.println("5. Supprimer une transaction");
         System.out.println("0. Quitter");
         System.out.println("────────────────────────────────────────");
         System.out.print("\nVotre choix : ");
@@ -196,6 +207,114 @@ public class BudgetConsoleApp {
             System.out.println(
                     "\nTransaction ajoutée avec succès !"
             );
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            BudgetConsolePrinter.printError(e.getMessage());
+        }
+    }
+
+    /**
+     * Prompts the user for a transaction identifier
+     * and deletes the matching transaction.
+     */
+    private void deleteTransaction() {
+        System.out.print("\nUUID de la transaction à supprimer : ");
+
+        String input = this.scanner.nextLine();
+
+        try {
+            UUID id = UUID.fromString(input.trim());
+
+            Transaction transaction = this.budgetService.findById(id);
+
+            System.out.println(
+                    "Transaction : " + transaction.getDescription()
+                            + " (" + transaction.getAmount() + " €)"
+            );
+
+            System.out.print("Confirmer la suppression (o/n) : ");
+
+            String confirmation = this.scanner.nextLine();
+
+            if (!confirmation.equalsIgnoreCase("o")) {
+                System.out.println("Suppression annulée.");
+                return;
+            }
+
+            this.budgetService.deleteTransaction(id);
+
+            System.out.println("Transaction supprimée avec succès.");
+
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            BudgetConsolePrinter.printError(e.getMessage());
+        }
+    }
+
+    /**
+     * Prompts the user for updated transaction details
+     * and persists the modified transaction.
+     */
+    private void updateTransaction() {
+        System.out.print("\nUUID de la transaction à modifier : ");
+
+        String input = this.scanner.nextLine();
+
+        try {
+            UUID id = UUID.fromString(input.trim());
+
+            Transaction existing = this.budgetService.findById(id);
+
+            System.out.println(
+                    "Transaction actuelle : "
+                            + existing.getDescription()
+                            + " (" + existing.getAmount() + " €)"
+            );
+
+            System.out.print("Nouvelle description : ");
+            String description = this.scanner.nextLine();
+
+            System.out.print("Nouveau montant : ");
+            BigDecimal amount = new BigDecimal(
+                    this.scanner.nextLine().trim()
+            );
+
+            this.printTypeMenu();
+            String typeInput = this.scanner.nextLine();
+
+            TransactionType type = switch (typeInput) {
+                case "1" -> TransactionType.INCOME;
+                case "2" -> TransactionType.EXPENSE;
+                default -> throw new IllegalArgumentException(
+                        "Type de transaction invalide."
+                );
+            };
+
+            this.printCategoryMenu();
+
+            System.out.print("Votre choix : ");
+            int choice = Integer.parseInt(
+                    this.scanner.nextLine().trim()
+            );
+
+            Category[] categories = Category.values();
+
+            if (choice < 1 || choice > categories.length) {
+                throw new IllegalArgumentException("Catégorie invalide.");
+            }
+
+            Category category = categories[choice - 1];
+
+            Transaction updated = new Transaction(
+                    id,
+                    description,
+                    amount,
+                    type,
+                    category
+            );
+
+            this.budgetService.updateTransaction(updated);
+
+            System.out.println("Transaction modifiée avec succès.");
 
         } catch (IllegalArgumentException | IllegalStateException e) {
             BudgetConsolePrinter.printError(e.getMessage());
