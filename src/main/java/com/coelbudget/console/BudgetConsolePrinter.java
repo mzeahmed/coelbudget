@@ -68,6 +68,25 @@ public class BudgetConsolePrinter {
     }
 
     /**
+     * Prints the total expenses for each budget category.
+     *
+     * <p>All categories are displayed, including those
+     * without recorded expenses.</p>
+     *
+     * @param budget the budget containing the expenses
+     */
+    public static void printExpensesByCategory(Budget budget) {
+        System.out.println(YELLOW + "Dépenses par catégorie : " + RESET);
+        System.out.println("────────────────────────────────────────");
+
+        Map<Category, BigDecimal> expenses = budget.calculateExpensesByCategories();
+
+        for (Map.Entry<Category, BigDecimal> entry : expenses.entrySet()) {
+            System.out.printf("%-12s : %s%n", entry.getKey(), entry.getValue());
+        }
+    }
+
+    /**
      * Prints a transaction with its description, category and amount.
      *
      * <p>Income transactions are displayed in green with a plus sign,
@@ -84,24 +103,5 @@ public class BudgetConsolePrinter {
                 + " [" + transaction.getCategory() + "]"
                 + " : " + transaction.getAmount()
                 + RESET);
-    }
-
-    /**
-     * Prints the total expenses for each budget category.
-     *
-     * <p>All categories are displayed, including those
-     * without recorded expenses.</p>
-     *
-     * @param budget the budget containing the expenses
-     */
-    private static void printExpensesByCategory(Budget budget) {
-        System.out.println(YELLOW + "Dépenses par catégorie : " + RESET);
-        System.out.println("────────────────────────────────────────");
-
-        Map<Category, BigDecimal> expenses = budget.calculateExpensesByCategories();
-
-        for (Map.Entry<Category, BigDecimal> entry : expenses.entrySet()) {
-            System.out.printf("%-12s : %s%n", entry.getKey(), entry.getValue());
-        }
     }
 }
