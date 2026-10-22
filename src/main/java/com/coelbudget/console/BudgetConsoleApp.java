@@ -8,6 +8,8 @@ import com.coelbudget.service.BudgetService;
 
 import java.math.BigDecimal;
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.Scanner;
 import java.util.UUID;
 
@@ -68,6 +70,10 @@ public class BudgetConsoleApp {
                     this.deleteTransaction();
                     break;
 
+                case "6":
+                    this.printMonthlyReport();
+                    break;
+
                 case "0":
                     System.out.println("Au revoir !");
                     running = false;
@@ -92,6 +98,7 @@ public class BudgetConsoleApp {
         System.out.println("3. Dépenses par catégorie");
         System.out.println("4. Modifier une transaction");
         System.out.println("5. Supprimer une transaction");
+        System.out.println("6. Rapport mensuel");
         System.out.println("0. Quitter");
         System.out.println("────────────────────────────────────────");
         System.out.print("\nVotre choix : ");
@@ -195,14 +202,7 @@ public class BudgetConsoleApp {
 
         // Step 5: Create and persist the transaction.
         try {
-            Transaction transaction = new Transaction(
-                    description,
-                    amount,
-                    type,
-                    category
-            );
-
-            this.budgetService.addTransaction(transaction);
+            this.budgetService.createTransaction(description, amount, type, category, LocalDate.now());
 
             System.out.println(
                     "\nTransaction ajoutée avec succès !"
@@ -304,13 +304,7 @@ public class BudgetConsoleApp {
 
             Category category = categories[choice - 1];
 
-            Transaction updated = new Transaction(
-                    id,
-                    description,
-                    amount,
-                    type,
-                    category
-            );
+            Transaction updated = new Transaction(existing.getId(), description, amount, type, category, existing.getDate());
 
             this.budgetService.updateTransaction(updated);
 
@@ -318,6 +312,38 @@ public class BudgetConsoleApp {
 
         } catch (IllegalArgumentException | IllegalStateException e) {
             BudgetConsolePrinter.printError(e.getMessage());
+        }
+    }
+
+    /**
+     * Prompts the user for a month and displays its financial summary.
+     */
+    private void printMonthlyReport() {
+        System.out.print("Mois à consulter (AAAA-MM) : ");
+        String input = this.scanner.nextLine();
+
+        try {
+            YearMonth month = YearMonth.parse(input.trim());
+
+            var report = this.budgetService
+                    .getBudget()
+                    .calculateMonthlyReport(month);
+
+            System.out.println("\n========== " + month + " ==========");
+            System.out.println("Revenus  : " + report.income() + " €");
+            System.out.println("Dépenses : " + report.expenses() + " €");
+            System.out.println("Solde    : " + report.balance() + " €");
+
+            System.out.println("\nDépenses par catégorie :");
+
+            report.expensesByCategory().forEach((category, amount) ->
+                    System.out.println(category + " : " + amount + " €")
+            );
+
+        } catch (java.time.format.DateTimeParseException e) {
+            BudgetConsolePrinter.printError(
+                    "Format invalide. Utilisez AAAA-MM, par exemple 2026-10."
+            );
         }
     }
 }

@@ -5,11 +5,13 @@ import com.coelbudget.Transaction;
 import com.coelbudget.TransactionType;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,7 +24,8 @@ import java.util.UUID;
 public class JsonBudgetRepository implements BudgetRepository {
 
     private final Path filePath;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
 
     /**
      * Creates a JSON repository using the specified file.
@@ -57,7 +60,7 @@ public class JsonBudgetRepository implements BudgetRepository {
                 return List.of();
             }
 
-            List<TransactionData> data = mapper.readValue(
+            List<TransactionData> data = this.mapper.readValue(
                     filePath.toFile(),
                     new TypeReference<List<TransactionData>>() {
                     }
@@ -71,13 +74,12 @@ public class JsonBudgetRepository implements BudgetRepository {
 
             return data.stream()
                     .map(item -> new Transaction(
-                            item.id() != null
-                                    ? item.id()
-                                    : UUID.randomUUID(),
+                            item.id() != null ? item.id() : UUID.randomUUID(),
                             item.description(),
                             item.amount(),
                             TransactionType.valueOf(item.type()),
-                            Category.valueOf(item.category())
+                            Category.valueOf(item.category()),
+                            item.date() != null ? item.date() : LocalDate.now()
                     ))
                     .toList();
 
@@ -113,7 +115,8 @@ public class JsonBudgetRepository implements BudgetRepository {
                             transaction.getDescription(),
                             transaction.getAmount(),
                             transaction.getType().name(),
-                            transaction.getCategory().name()
+                            transaction.getCategory().name(),
+                            transaction.getDate()
                     ))
                     .toList();
 
@@ -123,7 +126,7 @@ public class JsonBudgetRepository implements BudgetRepository {
                     ".tmp"
             );
 
-            mapper.writerWithDefaultPrettyPrinter()
+            this.mapper.writerWithDefaultPrettyPrinter()
                     .writeValue(temporaryFile.toFile(), data);
 
             try {

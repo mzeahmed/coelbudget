@@ -1,6 +1,7 @@
 package com.coelbudget.repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -11,12 +12,14 @@ import java.util.UUID;
  * @param amount      the transaction amount
  * @param type        the transaction type
  * @param category    the transaction category
+ * @param date        the effective transaction date
  */
 public record TransactionData(
         UUID id,
         String description,
         BigDecimal amount,
         String type,
-        String category
+        String category,
+        LocalDate date
 ) {
 }

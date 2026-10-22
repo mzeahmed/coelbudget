@@ -1,9 +1,13 @@
 package com.coelbudget.service;
 
 import com.coelbudget.Budget;
+import com.coelbudget.Category;
 import com.coelbudget.Transaction;
+import com.coelbudget.TransactionType;
 import com.coelbudget.repository.BudgetRepository;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -64,6 +68,34 @@ public class BudgetService {
                 .orElseThrow(() ->
                         new IllegalArgumentException("Transaction not found: " + id)
                 );
+    }
+
+    /**
+     * Creates and persists a new transaction.
+     *
+     * <p>Generates a unique identifier and delegates persistence
+     * to the existing addTransaction method.</p>
+     *
+     * @param description the transaction description
+     * @param amount the transaction amount
+     * @param type the transaction type
+     * @param category the transaction category
+     * @param date the effective transaction date
+     * @return the created transaction
+     */
+    public Transaction createTransaction(String description, BigDecimal amount, TransactionType type, Category category, LocalDate date) {
+        Transaction transaction = new Transaction(
+                UUID.randomUUID(),
+                description,
+                amount,
+                type,
+                category,
+                date
+        );
+
+        this.addTransaction(transaction);
+
+        return transaction;
     }
 
     /**

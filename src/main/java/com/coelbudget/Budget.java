@@ -1,6 +1,7 @@
 package com.coelbudget;
 
 import java.math.BigDecimal;
+import java.time.YearMonth;
 import java.util.*;
 
 /**
@@ -147,5 +148,54 @@ public class Budget {
         if (!removed) {
             throw new IllegalArgumentException("Transaction not found");
         }
+    }
+
+    /**
+     * Calculates the financial summary for a given month.
+     *
+     * @param month the month to analyze
+     * @return the monthly financial report
+     * @throws IllegalArgumentException if month is null
+     */
+    public MonthlyReport calculateMonthlyReport(YearMonth month) {
+        if (month == null) {
+            throw new IllegalArgumentException("Month cannot be null");
+        }
+
+        BigDecimal income = BigDecimal.ZERO;
+        BigDecimal expenses = BigDecimal.ZERO;
+
+        Map<Category, BigDecimal> expensesByCategory =
+                new EnumMap<>(Category.class);
+
+        for (Category category : Category.values()) {
+            expensesByCategory.put(category, BigDecimal.ZERO);
+        }
+
+        for (Transaction transaction : transactions) {
+            if (!YearMonth.from(transaction.getDate()).equals(month)) {
+                continue;
+            }
+
+            if (transaction.getType() == TransactionType.INCOME) {
+                income = income.add(transaction.getAmount());
+            } else {
+                expenses = expenses.add(transaction.getAmount());
+
+                expensesByCategory.merge(
+                        transaction.getCategory(),
+                        transaction.getAmount(),
+                        BigDecimal::add
+                );
+            }
+        }
+
+        return new MonthlyReport(
+                month,
+                income,
+                expenses,
+                income.subtract(expenses),
+                expensesByCategory
+        );
     }
 }
